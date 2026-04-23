@@ -1,0 +1,69 @@
+{
+  "name": "agentboard-desktop",
+  "productName": "AgentBoard",
+  "version": "1.0.0",
+  "description": "macOS desktop client for agentboard.cc",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "build": "tsc --project tsconfig.json && cp src/renderer/widget.html dist/renderer/widget.html && cp src/renderer/magiclink.html dist/renderer/magiclink.html && cp src/renderer/settings.html dist/renderer/settings.html",
+    "start": "npm run build && node scripts/patch-electron-dev.js && npx electron .",
+    "demo": "npm run build && npx electron . --demo",
+    "watch": "tsc --watch",
+    "make": "npm run build && electron-builder --mac",
+    "release": "npm run build && electron-builder --mac --publish always",
+    "lint": "eslint src --ext .ts"
+  },
+  "build": {
+    "appId": "cc.agentboard.desktop",
+    "productName": "AgentBoard",
+    "copyright": "Copyright © 2024 AgentBoard",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "singleArchFiles": "LICENSE",
+      "gatekeeperAssess": false,
+      "icon": "assets/icon.icns"
+    },
+    "files": [
+      "dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "xiaohaoxing",
+      "repo": "AgentBoard-Desktop"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.0.0",
+    "eslint": "^8.0.0",
+    "sharp": "^0.34.5",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.3.0"
+  }
+}

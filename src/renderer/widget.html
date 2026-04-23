@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgentBoard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      --accent: #007AFF;
+      --accent-dim: rgba(0,122,255,0.12);
+      --gold: #FF9500;
+      --silver: #8E8E93;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+
+      /* Light */
+      --bg: rgba(246,246,248,0.96);
+      --bg-card: rgba(255,255,255,0.80);
+      --bg-tab-active: rgba(255,255,255,0.95);
+      --bg-row-hover: rgba(0,0,0,0.04);
+      --bg-row-me: rgba(0,122,255,0.06);
+      --border: rgba(0,0,0,0.08);
+      --border-strong: rgba(0,0,0,0.14);
+      --text-primary: #1C1C1E;
+      --text-secondary: #6C6C70;
+      --text-tertiary: #AEAEB2;
+      --divider: rgba(0,0,0,0.06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: rgba(28,28,30,0.96);
+        --bg-card: rgba(44,44,46,0.80);
+        --bg-tab-active: rgba(58,58,60,0.95);
+        --bg-row-hover: rgba(255,255,255,0.06);
+        --bg-row-me: rgba(0,122,255,0.12);
+        --border: rgba(255,255,255,0.08);
+        --border-strong: rgba(255,255,255,0.14);
+        --text-primary: #F2F2F7;
+        --text-secondary: #8E8E93;
+        --text-tertiary: #48484A;
+        --divider: rgba(255,255,255,0.06);
+      }
+    }
+
+    html, body {
+      width: 320px;
+      height: 520px;
+      overflow: hidden;
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--text-primary);
+      background: var(--bg);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* ── Titlebar ─────────────────────────────────────────────── */
+    #titlebar {
+      display: flex;
+      align-items: center;
+      height: 38px;
+      padding: 0 10px 0 76px;
+      -webkit-app-region: drag;
+      border-bottom: 1px solid var(--divider);
+      flex-shrink: 0;
+    }
+    .tb-title {
+      flex: 1;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.02em;
+      pointer-events: none;
+    }
+    .tb-meta {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      margin-right: 6px;
+    }
+    .tb-actions {
+      display: flex;
+      gap: 2px;
+      -webkit-app-region: no-drag;
+    }
+    .tb-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .tb-btn:hover { background: var(--bg-row-hover); color: var(--text-primary); }
+    .tb-btn:disabled { opacity: 0.35; cursor: default; }
+    .tb-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .tb-btn.pinned { color: var(--accent); }
+    .tb-btn.pinned:hover { background: var(--accent-dim); color: var(--accent); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinning { animation: spin 0.7s linear infinite; }
+
+    /* ── User card ────────────────────────────────────────────── */
+    #user-card {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--divider);
+      flex-shrink: 0;
+    }
+    .uc-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .uc-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+    }
+    .uc-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .uc-avatar-placeholder {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      border: 1.5px solid var(--border);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .uc-info { flex: 1; min-width: 0; }
+    .uc-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+    .uc-team {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .uc-tokens {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 3px;
+    }
+    .uc-tokens-label {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      display: inline;
+      margin-left: 3px;
+      font-weight: 400;
+    }
+    .uc-tokens-delta {
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+    .uc-tokens-delta.positive { color: #30D158; }
+    .uc-tokens-delta.negative { color: #FF3B30; }
+
+    /* ── Rank badges ──────────────────────────────────────────── */
+    .uc-badges {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .rank-badge {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: var(--bg-row-hover);
+      border: 1px solid transparent;
+    }
+    .rb-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      line-height: 1;
+    }
+    .rb-num {
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1.2;
+      color: var(--text-secondary);
+    }
+    /* Tier colors */
+    .rank-badge.tier-gold   { background: rgba(255,214,10,0.14); border-color: rgba(255,214,10,0.3); }
+    .rank-badge.tier-gold   .rb-num { color: #D4A017; }
+    .rank-badge.tier-gold   .rb-label { color: #D4A017; opacity: 0.7; }
+    .rank-badge.tier-silver { background: rgba(174,174,178,0.14); border-color: rgba(174,174,178,0.3); }
+    .rank-badge.tier-silver .rb-num { color: #8E8E93; }
+    .rank-badge.tier-bronze { background: rgba(205,127,50,0.14); border-color: rgba(205,127,50,0.3); }
+    .rank-badge.tier-bronze .rb-num { color: #C47B2B; }
+    .rank-badge.tier-blue   { background: rgba(0,122,255,0.10); border-color: rgba(0,122,255,0.2); }
+    .rank-badge.tier-blue   .rb-num { color: #007AFF; }
+    .rank-badge.tier-green  { background: rgba(48,209,88,0.10); border-color: rgba(48,209,88,0.2); }
+    .rank-badge.tier-green  .rb-num { color: #28A745; }
+    @media (prefers-color-scheme: dark) {
+      .rank-badge.tier-gold   .rb-num { color: #FFD60A; }
+      .rank-badge.tier-bronze .rb-num { color: #E8913A; }
+      .rank-badge.tier-green  .rb-num { color: #30D158; }
+    }
+    .rb-trend { font-size: 10px; font-weight: 700; line-height: 1.4; min-height: 14px; }
+    .rb-trend.up   { color: #30D158; }
+    .rb-trend.down { color: #FF3B30; }
+    .rb-trend.flat { visibility: hidden; }
+
+    /* ── Titlebar rank pill ───────────────────────────────────────── */
+    .tb-rank {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 8px;
+      margin-right: 4px;
+      background: var(--bg-row-hover);
+      color: var(--text-secondary);
+    }
+    .tb-rank:empty { display: none; }
+    .tb-rank.tier-gold   { background: rgba(255,214,10,0.14);   color: #D4A017; }
+    .tb-rank.tier-silver { background: rgba(174,174,178,0.14); color: #8E8E93; }
+    .tb-rank.tier-bronze { background: rgba(205,127,50,0.14);  color: #C47B2B; }
+    .tb-rank.tier-blue   { background: rgba(0,122,255,0.10);   color: #007AFF; }
+    .tb-rank.tier-green  { background: rgba(48,209,88,0.10);   color: #28A745; }
+    @media (prefers-color-scheme: dark) {
+      .tb-rank.tier-gold   { color: #FFD60A; }
+      .tb-rank.tier-bronze { color: #E8913A; }
+      .tb-rank.tier-green  { color: #30D158; }
+    }
+
+    /* ── Tab bar ──────────────────────────────────────────────── */
+    #tabs {
+      display: flex;
+      padding: 6px 10px;
+      gap: 4px;
+      flex-shrink: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--divider);
+    }
+    .tab {
+      flex: 1;
+      height: 28px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .tab.active {
+      background: var(--bg-tab-active);
+      color: var(--text-primary);
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 0 0 0.5px var(--border-strong);
+    }
+    .tab:not(.active):hover { background: var(--bg-row-hover); }
+
+    /* ── List ─────────────────────────────────────────────────── */
+    #list {
+      flex: 1;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    #list::-webkit-scrollbar { width: 4px; }
+    #list::-webkit-scrollbar-track { background: transparent; }
+    #list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+    .lb-row {
+      display: flex;
+      align-items: center;
+      padding: 7px 14px;
+      gap: 10px;
+      border-bottom: 1px solid var(--divider);
+      transition: background 0.1s;
+    }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-row:hover { background: var(--bg-row-hover); }
+    .lb-row.is-me {
+      background: var(--bg-row-me);
+      border-left: 2.5px solid var(--accent);
+      padding-left: 11.5px;
+    }
+    .lb-rank {
+      width: 22px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-tertiary);
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .lb-rank.r1 { color: #FFD60A; }
+    .lb-rank.r2 { color: var(--silver); }
+    .lb-rank.r3 { color: var(--gold); }
+    .lb-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .lb-avatar-ph {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .lb-info { flex: 1; min-width: 0; }
+    .lb-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .lb-sub {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .lb-val {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .lb-val.is-me { color: var(--accent); }
+
+    /* ── Empty / skeleton ─────────────────────────────────────── */
+    .skeleton { animation: shimmer 1.2s ease-in-out infinite; }
+    @keyframes shimmer {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 0.9; }
+    }
+    .skel-bar {
+      height: 10px;
+      background: var(--text-tertiary);
+      border-radius: 4px;
+      margin: 2px 0;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────── */
+    #root {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+    body.collapsed #user-card,
+    body.collapsed #tabs,
+    body.collapsed #list { display: none; }
+
+    /* ── Auth overlay ─────────────────────────────────────────── */
+    #auth-overlay {
+      position: absolute;
+      top: 38px;
+      left: 0; right: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--bg);
+      z-index: 10;
+    }
+    #auth-overlay.hidden { display: none; }
+    .auth-graphic {
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+    }
+    .auth-overlay-msg {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .auth-overlay-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+      padding: 0 24px;
+      line-height: 1.5;
+    }
+    @keyframes spin-ring { to { transform: rotate(360deg); } }
+    .auth-spinner-ring {
+      width: 28px;
+      height: 28px;
+      border: 2.5px solid var(--border-strong);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin-ring 0.8s linear infinite;
+    }
+  </style>
+</head>
+<body>
+<div id="root">
+  <div id="titlebar">
+    <span class="tb-title">AgentBoard</span>
+    <span id="tb-rank" class="tb-rank"></span>
+    <span class="tb-meta" id="updated-at"></span>
+    <div class="tb-actions">
+      <button class="tb-btn" id="btn-refresh" title="刷新">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13.5 8a5.5 5.5 0 1 1-1.1-3.3"/>
+          <polyline points="13.5 2.5 13.5 5.5 10.5 5.5"/>
+        </svg>
+      </button>
+      <button class="tb-btn pinned" id="btn-pin" title="始终置顶">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 1.5h6l1 5.5H4z"/>
+          <line x1="4" y1="7" x2="12" y2="7"/>
+          <line x1="8" y1="7" x2="8" y2="13.5"/>
+        </svg>
+      </button>
+      <button class="tb-btn" id="btn-collapse" title="折叠">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <line x1="3" y1="8" x2="13" y2="8"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="user-card">
+    <div class="uc-main">
+      <div class="uc-left">
+        <div class="uc-avatar-placeholder skeleton" id="uc-avatar-wrap">
+          <span id="uc-initials"></span>
+        </div>
+        <div class="uc-info">
+          <div class="uc-name skeleton skel-bar" id="uc-name" style="width:80px;height:14px;"></div>
+          <div class="uc-team skeleton skel-bar" id="uc-team" style="width:60px;height:10px;margin-top:3px;"></div>
+          <div style="margin-top:3px;line-height:1.3;">
+            <span class="uc-tokens skeleton skel-bar" id="uc-tokens" style="width:40px;height:11px;display:inline-block;vertical-align:middle;"></span>
+            <span class="uc-tokens-label" id="uc-tokens-label" style="visibility:hidden"></span>
+            <span class="uc-tokens-delta" id="uc-tokens-delta" style="visibility:hidden"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="uc-badges">
+      <div class="rank-badge" id="badge-people" style="visibility:hidden">
+        <span class="rb-label" data-i18n="badge.people">用户</span>
+        <span class="rb-num" id="rb-people-num">—</span>
+        <span class="rb-trend flat" id="rb-people-trend">·</span>
+      </div>
+      <div class="rank-badge" id="badge-teams" style="visibility:hidden">
+        <span class="rb-label" data-i18n="badge.teams">团队</span>
+        <span class="rb-num" id="rb-teams-num">—</span>
+        <span class="rb-trend flat" id="rb-teams-trend">·</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabs">
+    <button class="tab active" data-tab="people" data-i18n="tab.people">用户榜</button>
+    <button class="tab" data-tab="teams" data-i18n="tab.teams">团队榜</button>
+  </div>
+
+  <div id="list"></div>
+
+  <div id="auth-overlay" class="hidden">
+    <div id="auth-overlay-graphic" class="auth-graphic"></div>
+    <div id="auth-overlay-msg" class="auth-overlay-msg" data-i18n-dynamic></div>
+    <div id="auth-overlay-sub" class="auth-overlay-sub" data-i18n-dynamic></div>
+  </div>
+</div>
+<script src="widget.js"></script>
+</body>
+</html>
