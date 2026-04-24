@@ -10,6 +10,7 @@ declare const widgetApi: {
   collapse: () => void;
   expand: () => void;
   togglePin: () => void;
+  openLogin: () => void;
 };
 
 interface PersonEntry {
@@ -100,6 +101,7 @@ let lastUpdated: Date | null = null;
 let isCollapsed = false;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let currentLocale = 'zh';
+let locked = false;
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 
@@ -253,16 +255,20 @@ function showOverlay(type: 'needs-login' | 'signing-in'): void {
   const graphic = document.getElementById('auth-overlay-graphic')!;
   const msg = document.getElementById('auth-overlay-msg')!;
   const sub = document.getElementById('auth-overlay-sub')!;
+  const btnLogin = document.getElementById('btn-login')!;
   if (type === 'needs-login') {
     graphic.innerHTML = LOCK_SVG;
     graphic.className = 'auth-graphic';
     msg.textContent = widgetApi.t('overlay.needsLogin');
     sub.textContent = widgetApi.t('overlay.needsLoginSub');
+    btnLogin.textContent = widgetApi.t('overlay.loginBtn');
+    btnLogin.classList.remove('hidden');
   } else {
     graphic.innerHTML = '<div class="auth-spinner-ring"></div>';
     graphic.className = 'auth-graphic';
     msg.textContent = widgetApi.t('overlay.signingIn');
     sub.textContent = widgetApi.t('overlay.signingInSub');
+    btnLogin.classList.add('hidden');
   }
   overlay.classList.remove('hidden');
 }
@@ -291,7 +297,7 @@ function applyLocale(): void {
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
 widgetApi.onStatsUpdated((data) => {
-  hideOverlay();
+  if (!locked) hideOverlay();
   lastData = data;
   lastUpdated = new Date();
   updatedAt.textContent = '刚刚';
@@ -310,13 +316,17 @@ widgetApi.onPinChanged((pinned) => {
   btnPin.title = pinned ? widgetApi.t('btn.unpin') : widgetApi.t('btn.pinned');
 });
 
-widgetApi.onNeedsLogin(() => showOverlay('needs-login'));
-widgetApi.onSigningIn(() => showOverlay('signing-in'));
+widgetApi.onNeedsLogin(() => { locked = true; showOverlay('needs-login'); });
+widgetApi.onSigningIn(() => { locked = false; showOverlay('signing-in'); });
 
 btnRefresh.addEventListener('click', () => {
   btnRefresh.querySelector('svg')?.classList.add('spinning');
   widgetApi.refresh();
   setTimeout(() => btnRefresh.querySelector('svg')?.classList.remove('spinning'), 1000);
+});
+
+document.getElementById('btn-login')?.addEventListener('click', () => {
+  widgetApi.openLogin();
 });
 
 btnPin.addEventListener('click', () => {

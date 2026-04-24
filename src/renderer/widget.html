@@ -435,6 +435,22 @@
       padding: 0 24px;
       line-height: 1.5;
     }
+    .auth-login-btn {
+      margin-top: 4px;
+      padding: 8px 24px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .auth-login-btn:hover { opacity: 0.85; }
+    .auth-login-btn:active { opacity: 0.7; }
+    .auth-login-btn.hidden { display: none; }
     @keyframes spin-ring { to { transform: rotate(360deg); } }
     .auth-spinner-ring {
       width: 28px;
@@ -516,6 +532,7 @@
     <div id="auth-overlay-graphic" class="auth-graphic"></div>
     <div id="auth-overlay-msg" class="auth-overlay-msg" data-i18n-dynamic></div>
     <div id="auth-overlay-sub" class="auth-overlay-sub" data-i18n-dynamic></div>
+    <button id="btn-login" class="auth-login-btn hidden" data-i18n="overlay.loginBtn">登录</button>
   </div>
 </div>
 <script src="widget.js"></script>

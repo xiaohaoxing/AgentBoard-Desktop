@@ -129,6 +129,10 @@ export function setupAuthHandlers(): void {
     createLoginWindow('https://agentboard.cc');
   });
 
+  ipcMain.on('auth:open-login', () => {
+    createLoginWindow('https://agentboard.cc');
+  });
+
   ipcMain.on('auth:logout', async () => {
     await clearSession();
     needsLoginPending = true;

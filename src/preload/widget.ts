@@ -25,4 +25,5 @@ contextBridge.exposeInMainWorld('widgetApi', {
   collapse: () => ipcRenderer.send('widget:collapse'),
   expand: () => ipcRenderer.send('widget:expand'),
   togglePin: () => ipcRenderer.send('widget:toggle-pin'),
+  openLogin: () => ipcRenderer.send('auth:open-login'),
 });

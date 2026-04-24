@@ -31,7 +31,8 @@ const resources: Record<Locale, Record<string, string>> = {
     'btn.collapse': '折叠',
     // Auth overlay
     'overlay.needsLogin': '需要登录',
-    'overlay.needsLoginSub': '请在弹出的登录窗口完成登录',
+    'overlay.needsLoginSub': '请点击下方按钮打开登录窗口',
+    'overlay.loginBtn': '打开登录窗口',
     'overlay.signingIn': '登录中',
     'overlay.signingInSub': '正在获取数据…',
     // Magic link bar
@@ -73,7 +74,8 @@ const resources: Record<Locale, Record<string, string>> = {
     'btn.collapse': 'Collapse',
     // Auth overlay
     'overlay.needsLogin': 'Sign In Required',
-    'overlay.needsLoginSub': 'Please complete sign-in in the login window',
+    'overlay.needsLoginSub': 'Click the button below to open the login window',
+    'overlay.loginBtn': 'Open Login Window',
     'overlay.signingIn': 'Signing In',
     'overlay.signingInSub': 'Loading data…',
     // Magic link bar
