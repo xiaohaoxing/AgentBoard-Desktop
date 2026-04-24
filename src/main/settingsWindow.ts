@@ -1,14 +1,12 @@
 import path from 'path';
-import { app, BrowserWindow, ipcMain, webContents } from 'electron';
+import { BrowserWindow, ipcMain, webContents } from 'electron';
 import { getLocale, setLocale, t, onLocaleChange } from './i18n';
 import type { Locale } from './i18n';
 
 let settingsWindow: BrowserWindow | null = null;
 
 function getHtmlPath(): string {
-  return app.isPackaged
-    ? path.join(process.resourcesPath, 'dist/renderer/settings.html')
-    : path.join(__dirname, '../../dist/renderer/settings.html');
+  return path.join(__dirname, '../renderer/settings.html');
 }
 
 export function openSettingsWindow(): void {

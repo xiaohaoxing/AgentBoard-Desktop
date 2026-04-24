@@ -1,7 +1,7 @@
 {
   "name": "agentboard-desktop",
   "productName": "AgentBoard",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "macOS desktop client for agentboard.cc",
   "main": "dist/main/index.js",
   "scripts": {
@@ -51,7 +51,8 @@
     "publish": {
       "provider": "github",
       "owner": "xiaohaoxing",
-      "repo": "AgentBoard-Desktop"
+      "repo": "AgentBoard-Desktop",
+      "releaseType": "release"
     }
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 import path from 'path';
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { BrowserWindow, ipcMain, screen } from 'electron';
 import Store from 'electron-store';
 import { BootstrapData } from './apiClient';
 
@@ -58,9 +58,7 @@ export function createStatsWidget(): BrowserWindow {
     },
   });
 
-  const widgetHtml = app.isPackaged
-    ? path.join(process.resourcesPath, 'dist/renderer/widget.html')
-    : path.join(__dirname, '../../dist/renderer/widget.html');
+  const widgetHtml = path.join(__dirname, '../renderer/widget.html');
 
   statsWidget.loadFile(widgetHtml);
 
