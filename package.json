@@ -1,8 +1,9 @@
 {
   "name": "agentboard-desktop",
   "productName": "AgentBoard",
-  "version": "1.0.4",
-  "description": "macOS desktop client for agentboard.cc",
+  "version": "1.0.5",
+  "description": "Desktop client for agentboard.cc",
+  "author": "AgentBoard",
   "main": "dist/main/index.js",
   "scripts": {
     "build": "tsc --project tsconfig.json && cp src/renderer/widget.html dist/renderer/widget.html && cp src/renderer/magiclink.html dist/renderer/magiclink.html && cp src/renderer/settings.html dist/renderer/settings.html",
@@ -20,22 +21,25 @@
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "universal"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "universal"
-          ]
-        }
+        { "target": "dmg", "arch": ["universal"] },
+        { "target": "zip", "arch": ["universal"] }
       ],
       "singleArchFiles": "LICENSE*",
       "gatekeeperAssess": false,
       "icon": "assets/icon.icns"
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "files": [
       "dist/main/**/*",

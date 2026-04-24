@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 jobs:
-  release:
+  release-mac:
     runs-on: macos-latest
     permissions:
       contents: write
@@ -32,3 +32,36 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release
+
+  release-win:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npx tsc --project tsconfig.json
+
+      - name: Copy HTML files
+        run: |
+          Copy-Item src/renderer/widget.html dist/renderer/widget.html
+          Copy-Item src/renderer/magiclink.html dist/renderer/magiclink.html
+          Copy-Item src/renderer/settings.html dist/renderer/settings.html
+        shell: pwsh
+
+      - name: Build and publish Windows app
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish always
