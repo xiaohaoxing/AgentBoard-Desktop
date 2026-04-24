@@ -2,6 +2,9 @@
 
 A macOS menu bar app that displays your personal and team rankings on [agentboard.cc](https://agentboard.cc) in real time.
 
+[![Release](https://github.com/xiaohaoxing/AgentBoard-Desktop/actions/workflows/release.yml/badge.svg)](https://github.com/xiaohaoxing/AgentBoard-Desktop/actions/workflows/release.yml)
+[![GitHub release](https://img.shields.io/github/v/release/xiaohaoxing/AgentBoard-Desktop)](https://github.com/xiaohaoxing/AgentBoard-Desktop/releases)
+[![GitHub Downloads](https://img.shields.io/github/downloads/xiaohaoxing/AgentBoard-Desktop/total)](https://github.com/xiaohaoxing/AgentBoard-Desktop/releases)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)
 ![Electron](https://img.shields.io/badge/electron-30-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
