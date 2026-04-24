@@ -1,7 +1,7 @@
 {
   "name": "agentboard-desktop",
   "productName": "AgentBoard",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "macOS desktop client for agentboard.cc",
   "main": "dist/main/index.js",
   "scripts": {
@@ -38,7 +38,9 @@
       "icon": "assets/icon.icns"
     },
     "files": [
-      "dist/**/*"
+      "dist/main/**/*",
+      "dist/renderer/**/*",
+      "dist/preload/**/*"
     ],
     "extraResources": [
       {
