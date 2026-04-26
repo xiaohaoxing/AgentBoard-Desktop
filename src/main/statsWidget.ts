@@ -21,6 +21,7 @@ const COLLAPSED_HEIGHT = 38;
 const EDGE_MARGIN = 16;
 
 let statsWidget: BrowserWindow | null = null;
+let pendingNeedsLogin = false;
 
 function getDefaultPosition(): { x: number; y: number } {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -64,6 +65,9 @@ export function createStatsWidget(): BrowserWindow {
 
   statsWidget.webContents.on('did-finish-load', () => {
     statsWidget?.webContents.send('widget:pin-changed', statsWidget.isAlwaysOnTop());
+    if (pendingNeedsLogin) {
+      statsWidget?.webContents.send('widget:needs-login');
+    }
   });
 
   statsWidget.on('move', () => {
@@ -106,10 +110,12 @@ export function createStatsWidget(): BrowserWindow {
   });
 
   ipcMain.on('auth:needs-login', () => {
+    pendingNeedsLogin = true;
     statsWidget?.webContents.send('widget:needs-login');
   });
 
   ipcMain.on('auth:login-success', () => {
+    pendingNeedsLogin = false;
     statsWidget?.webContents.send('widget:signing-in');
   });
 

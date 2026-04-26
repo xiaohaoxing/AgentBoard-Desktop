@@ -227,6 +227,7 @@ export async function fetchBootstrap(): Promise<BootstrapData | NetworkError> {
 let pollingTimer: ReturnType<typeof setInterval> | null = null;
 
 export function startPolling(intervalMs = 60_000): void {
+  stopPolling();
   fetchAndBroadcast();
   pollingTimer = setInterval(fetchAndBroadcast, intervalMs);
 
