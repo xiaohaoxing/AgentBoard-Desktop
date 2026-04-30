@@ -21,10 +21,8 @@
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
-        { "target": "dmg", "arch": ["universal"] },
-        { "target": "zip", "arch": ["universal"] }
+        { "target": "dmg", "arch": ["x64", "arm64"] }
       ],
-      "singleArchFiles": "LICENSE*",
       "gatekeeperAssess": false,
       "icon": "assets/icon.icns"
     },
