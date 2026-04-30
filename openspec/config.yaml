@@ -1,0 +1,30 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+rules:
+  # 专门针对 proposal.md 生成的规则
+  proposal:
+    - "MANDATORY ACTION: 在撰写 Proposal 之前，你必须调用相连的 Knowledge Base MCP 工具和 Atlassian MCP检索相关文档（搜索相关的业务名称、功能背景等）。"
+    - "将你通过 MCP 检索到的核心业务规则、前置条件总结，明确写在 Proposal 的背景（Context）部分。"
+    - "如果知识库中明确排除了某些需求（Out of scope），也请在提案中指明。"
+  
+  # 针对 spec deltas (具体需求变更) 的规则
+  specs:
+    - "在推导需求 Scenario 之前，确认你通过 MCP 了解了业务上的 Edge Cases。"
