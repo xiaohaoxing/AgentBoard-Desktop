@@ -47,7 +47,7 @@
     }
 
     html, body {
-      width: 320px;
+      width: 345px;
       height: 520px;
       overflow: hidden;
       font-family: var(--font);
@@ -79,9 +79,10 @@
       pointer-events: none;
     }
     .tb-meta {
-      font-size: 10px;
+      font-size: 9px;
       color: var(--text-tertiary);
       margin-right: 6px;
+      white-space: nowrap;
     }
     .tb-actions {
       display: flex;
@@ -475,11 +476,6 @@
           <polyline points="13.5 2.5 13.5 5.5 10.5 5.5"/>
         </svg>
       </button>
-      <button class="tb-btn" id="btn-trend" title="用量趋势">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="1,13 5,7 8,10 11,4 15,8"/>
-        </svg>
-      </button>
       <button class="tb-btn pinned" id="btn-pin" title="始终置顶">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M5 1.5h6l1 5.5H4z"/>
@@ -529,6 +525,11 @@
   <div id="tabs">
     <button class="tab active" data-tab="people" data-i18n="tab.people">用户榜</button>
     <button class="tab" data-tab="teams" data-i18n="tab.teams">团队榜</button>
+    <button class="tb-btn" id="btn-trend" title="用量趋势" style="flex-shrink:0;width:28px;height:28px;">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1,13 5,7 8,10 11,4 15,8"/>
+      </svg>
+    </button>
   </div>
 
   <div id="list"></div>
@@ -543,3 +544,4 @@
 <script src="widget.js"></script>
 </body>
 </html>
+

@@ -15,7 +15,7 @@ const store = new Store<{ widgetState: WidgetState }>({
   defaults: { widgetState: { collapsed: false } },
 });
 
-const WIDGET_WIDTH = 320;
+const WIDGET_WIDTH = 345;
 const WIDGET_HEIGHT = 520;
 const COLLAPSED_HEIGHT = 38;
 const EDGE_MARGIN = 16;
