@@ -1,42 +1,30 @@
-import { BrowserWindow, Notification, app, dialog } from 'electron';
+import { BrowserWindow, Notification, app, dialog, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
+
+const RELEASES_URL = 'https://github.com/xiaohaoxing/AgentBoard-Desktop/releases/latest';
 
 let updateWindow: BrowserWindow | null = null;
 
 export function setupUpdater(win: BrowserWindow): void {
   updateWindow = win;
 
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
 
-  autoUpdater.on('update-available', (info) => {
-    if (Notification.isSupported()) {
-      const n = new Notification({
-        title: 'AgentBoard 有新版本可用',
-        body: `版本 ${info.version} 正在后台下载，完成后将提醒您安装。`,
-      });
-      n.on('click', () => {
-        updateWindow?.show();
-        updateWindow?.focus();
-      });
-      n.show();
-    }
-  });
-
-  autoUpdater.on('update-downloaded', async () => {
+  autoUpdater.on('update-available', async (info) => {
     if (!updateWindow) return;
 
     const { response } = await dialog.showMessageBox(updateWindow, {
       type: 'info',
-      title: '更新已就绪',
-      message: 'AgentBoard 新版本已下载完成，点击「重启安装」完成更新。',
-      buttons: ['重启安装', '稍后'],
+      title: 'AgentBoard 有新版本',
+      message: `版本 ${info.version} 已发布，前往下载页面获取最新版本？`,
+      buttons: ['前往下载', '稍后'],
       defaultId: 0,
       cancelId: 1,
     });
 
     if (response === 0) {
-      autoUpdater.quitAndInstall();
+      shell.openExternal(RELEASES_URL);
     }
   });
 
@@ -46,7 +34,7 @@ export function setupUpdater(win: BrowserWindow): void {
 
   // Check after 5s delay to not block startup
   setTimeout(() => {
-    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+    autoUpdater.checkForUpdates().catch((err) => {
       console.error('Update check failed:', err);
     });
   }, 5000);
