@@ -5,3 +5,13 @@ dist/
 release/
 out/
 .DS_Store
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# API response snapshots (may contain PII)
+docs/*.json
