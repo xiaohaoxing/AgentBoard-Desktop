@@ -11,6 +11,7 @@ declare const widgetApi: {
   expand: () => void;
   togglePin: () => void;
   openLogin: () => void;
+  openTrendWindow: () => void;
 };
 
 interface PersonEntry {
@@ -323,6 +324,10 @@ btnRefresh.addEventListener('click', () => {
   btnRefresh.querySelector('svg')?.classList.add('spinning');
   widgetApi.refresh();
   setTimeout(() => btnRefresh.querySelector('svg')?.classList.remove('spinning'), 1000);
+});
+
+document.getElementById('btn-trend')?.addEventListener('click', () => {
+  widgetApi.openTrendWindow();
 });
 
 document.getElementById('btn-login')?.addEventListener('click', () => {

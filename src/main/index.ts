@@ -1,14 +1,15 @@
 import path from 'path';
-import { app, Menu, ipcMain, nativeImage } from 'electron';
+import { app, Menu, ipcMain, nativeImage, dialog, BrowserWindow } from 'electron';
 import { hasSession, createLoginWindow, setupAuthHandlers } from './authSession';
 import { createStatsWidget, getStatsWidget } from './statsWidget';
 import { createTray } from './tray';
-import { startPolling, setDemoMode } from './apiClient';
-import { getDemoBootstrap } from './mockData';
+import { startPolling, setDemoMode, getUsageHistory, clearUsageHistory } from './apiClient';
+import { getDemoBootstrap, getDemoUsageHistory } from './mockData';
 import { setupUpdater, isUpdateCheckEnabled } from './updater';
 import { createDebugWindow } from './debugWindow';
 import { openSettingsWindow, setupI18nHandlers } from './settingsWindow';
 import { t, getLocale, onLocaleChange } from './i18n';
+import { openTrendWindow } from './trendWindow';
 
 const isDemo = process.argv.includes('--demo');
 const isDebug = process.argv.includes('--debug');
@@ -34,6 +35,30 @@ app.whenReady().then(async () => {
 
   setupI18nHandlers();
   setupAuthHandlers();
+
+  ipcMain.handle('get-usage-history', (_event, { range }: { range: string }) => {
+    if (isDemo) return getDemoUsageHistory(range as 'day' | 'week' | 'month');
+    return getUsageHistory(range as 'day' | 'week' | 'month');
+  });
+
+  ipcMain.handle('clear-usage-history', () => {
+    clearUsageHistory();
+  });
+
+  ipcMain.handle('confirm-clear-history', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const result = dialog.showMessageBoxSync(win!, {
+      type: 'warning',
+      message: t('trend.clearConfirmTitle'),
+      detail: t('trend.clearConfirmMsg'),
+      buttons: [t('trend.clearConfirmCancel'), t('trend.clearConfirmOk')],
+      defaultId: 0,
+      cancelId: 0,
+    });
+    return result === 1;
+  });
+
+  ipcMain.on('open-trend-window', () => openTrendWindow());
 
   // Ensure user is logged in
   if (isDemo) {

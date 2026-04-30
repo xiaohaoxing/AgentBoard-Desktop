@@ -47,6 +47,21 @@ const resources: Record<Locale, Record<string, string>> = {
     'settings.language': '语言',
     'settings.langZh': '中文',
     'settings.langEn': 'English',
+    // Trend window
+    'trend.title': '用量趋势',
+    'trend.tokensLabel': 'tokens',
+    'trend.rangeDay': '日',
+    'trend.rangeWeek': '周',
+    'trend.rangeMonth': '月',
+    'trend.clearBtn': '清空统计',
+    'trend.chartLine': '折线图',
+    'trend.chartBar': '柱形图',
+    'trend.avgHour': '时均',
+    'trend.avgDay': '日均',
+    'trend.clearConfirmTitle': '确认清空',
+    'trend.clearConfirmMsg': '将删除所有本地用量历史记录，此操作不可撤销。',
+    'trend.clearConfirmOk': '清空',
+    'trend.clearConfirmCancel': '取消',
   },
   en: {
     // Internal locale identifier
@@ -90,6 +105,21 @@ const resources: Record<Locale, Record<string, string>> = {
     'settings.language': 'Language',
     'settings.langZh': '中文',
     'settings.langEn': 'English',
+    // Trend window
+    'trend.title': 'Usage Trend',
+    'trend.tokensLabel': 'tokens',
+    'trend.rangeDay': 'Day',
+    'trend.rangeWeek': 'Week',
+    'trend.rangeMonth': 'Month',
+    'trend.clearBtn': 'Clear History',
+    'trend.chartLine': 'Line chart',
+    'trend.chartBar': 'Bar chart',
+    'trend.avgHour': 'Avg/hr',
+    'trend.avgDay': 'Avg/day',
+    'trend.clearConfirmTitle': 'Clear History',
+    'trend.clearConfirmMsg': 'All local usage history will be deleted. This cannot be undone.',
+    'trend.clearConfirmOk': 'Clear',
+    'trend.clearConfirmCancel': 'Cancel',
   },
 };
 

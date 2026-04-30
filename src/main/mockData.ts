@@ -1,4 +1,4 @@
-import type { BootstrapData, PersonEntry, TeamEntry, ViewerProfile } from './apiClient';
+import type { BootstrapData, PersonEntry, TeamEntry, ViewerProfile, UsagePoint, UsageHistoryRange } from './apiClient';
 
 export const DEMO_VIEWER: ViewerProfile = {
   id: 'demo-user-007',
@@ -46,4 +46,56 @@ export function getDemoBootstrap(): BootstrapData {
     myTeamRankChange: 1,
     myTokensDelta: 150_000,
   };
+}
+
+// Seeded pseudo-random for reproducible mock data
+function seededRand(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
+export function getDemoUsageHistory(range: UsageHistoryRange): UsagePoint[] {
+  const rand = seededRand(42);
+  const now = new Date('2026-04-30T18:00:00');
+
+  if (range === 'day') {
+    return Array.from({ length: 24 }, (_, i) => {
+      const h = (now.getHours() - 23 + i + 24) % 24;
+      const label = `${String(h).padStart(2, '0')}:00`;
+      // Peak usage during working hours (9-18)
+      const base = (h >= 9 && h <= 18) ? 28_000 : 4_000;
+      const tokens = Math.round(base * (0.6 + rand() * 0.8));
+      return { label, tokens };
+    });
+  }
+
+  if (range === 'week') {
+    const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    const weekdayBase = [420_000, 510_000, 480_000, 550_000, 490_000, 180_000, 90_000];
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 6 + i);
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const label = `${mm}/${dd} ${days[d.getDay() === 0 ? 6 : d.getDay() - 1]}`;
+      const tokens = Math.round(weekdayBase[i] * (0.75 + rand() * 0.5));
+      return { label, tokens };
+    });
+  }
+
+  // month
+  return Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 29 + i);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const label = `${mm}/${dd}`;
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    const base = isWeekend ? 120_000 : 400_000;
+    const tokens = Math.round(base * (0.5 + rand() * 1.0));
+    return { label, tokens };
+  });
 }

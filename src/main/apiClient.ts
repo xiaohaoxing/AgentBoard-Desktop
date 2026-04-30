@@ -58,6 +58,13 @@ export interface NetworkError {
   status?: number;
 }
 
+export interface UsagePoint {
+  label: string;
+  tokens: number;
+}
+
+export type UsageHistoryRange = 'day' | 'week' | 'month';
+
 // ── Persistent viewer cache ───────────────────────────────────────────────────
 
 const viewerStore = new Store<{ viewer: ViewerProfile | null }>({
@@ -72,6 +79,87 @@ const rankHistoryStore = new Store<{ ranks: Record<string, RankSnapshot[]> }>({
   name: 'rank-history',
   defaults: { ranks: {} },
 });
+
+// ── Usage history (hourly snapshots, local-only) ───────────────────────────────
+
+interface HourlyUsageSnap { tokens: number; periodId: string; }
+// Key = local hour-bucket start timestamp (ms), value = latest poll value in that hour
+const usageHistoryStore = new Store<{ snaps: Record<string, HourlyUsageSnap> }>({
+  name: 'usage-history',
+  defaults: { snaps: {} },
+});
+
+const H = 3_600_000;   // 1 hour in ms
+const D = 86_400_000;  // 1 day in ms
+
+function localHourStart(ts: number = Date.now()): number {
+  const d = new Date(ts);
+  d.setMinutes(0, 0, 0);
+  return d.getTime();
+}
+
+function localDayStart(ts: number = Date.now()): number {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function saveUsageSnapshot(tokens: number, periodId: string): void {
+  const key = String(localHourStart());
+  const snaps = usageHistoryStore.get('snaps');
+  snaps[key] = { tokens, periodId };
+  usageHistoryStore.set('snaps', snaps);
+}
+
+export function clearUsageHistory(): void {
+  usageHistoryStore.set('snaps', {});
+}
+
+function latestSnapIn(snaps: Record<string, HourlyUsageSnap>, from: number, to: number): HourlyUsageSnap | null {
+  let best: HourlyUsageSnap | null = null;
+  let bestTs = -1;
+  for (const [k, v] of Object.entries(snaps)) {
+    const ts = Number(k);
+    if (ts >= from && ts < to && ts > bestTs) { best = v; bestTs = ts; }
+  }
+  return best;
+}
+
+function usageDelta(curr: HourlyUsageSnap | null, prev: HourlyUsageSnap | null): number {
+  if (!curr) return 0;
+  if (!prev || prev.periodId !== curr.periodId) return curr.tokens;
+  return Math.max(0, curr.tokens - prev.tokens);
+}
+
+export function getUsageHistory(range: UsageHistoryRange): UsagePoint[] {
+  const snaps = usageHistoryStore.get('snaps');
+  const now = Date.now();
+
+  if (range === 'day') {
+    const curHour = localHourStart(now);
+    return Array.from({ length: 24 }, (_, i) => {
+      const hStart = curHour - (23 - i) * H;
+      const h = new Date(hStart).getHours();
+      const label = `${String(h).padStart(2, '0')}:00`;
+      const curr = latestSnapIn(snaps, hStart, hStart + H);
+      const prev = latestSnapIn(snaps, hStart - H, hStart);
+      return { label, tokens: usageDelta(curr, prev) };
+    });
+  }
+
+  const buckets = range === 'month' ? 30 : 7;
+  const today = localDayStart(now);
+  return Array.from({ length: buckets }, (_, i) => {
+    const dStart = today - (buckets - 1 - i) * D;
+    const d = new Date(dStart + 12 * H); // noon → correct local date in any TZ
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const label = `${mm}/${dd}`;
+    const curr = latestSnapIn(snaps, dStart, dStart + D);
+    const prev = latestSnapIn(snaps, dStart - D, dStart);
+    return { label, tokens: usageDelta(curr, prev) };
+  });
+}
 
 export function getCachedViewer(): ViewerProfile | null {
   return viewerStore.get('viewer');
@@ -290,6 +378,8 @@ async function fetchAndBroadcast(): Promise<void> {
       userHistory.push({ peopleRank: me.rank, totalTokens: me.total_tokens, teamRank: myTeam?.rank, timestamp: Date.now() });
       if (userHistory.length > 60) userHistory.splice(0, userHistory.length - 60);
       rankHistoryStore.set('ranks', { ...history, [uid]: userHistory });
+
+      saveUsageSnapshot(me.total_tokens, data.periodId);
     }
   }
 
