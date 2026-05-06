@@ -38,7 +38,12 @@ A macOS menu bar app that displays your personal and team rankings on [agentboar
 
 Go to [Releases](https://github.com/xiaohaoxing/AgentBoard-Desktop/releases), download the latest `.dmg`, and drag it into Applications.
 
-> **First launch warning** — Because the app is not notarized by Apple, macOS will show an "unidentified developer" prompt. In Finder, **right-click the app → Open → Open** to bypass it. Subsequent launches work normally.
+> **First launch warning** — Because the app is not notarized by Apple, macOS will show an "unidentified developer" prompt.
+> Input the command in terminal
+
+``` bash
+sudo xattr -d com.apple.quarantine /Applications/AgentBoard.app
+```
 
 ### Build from source
 
