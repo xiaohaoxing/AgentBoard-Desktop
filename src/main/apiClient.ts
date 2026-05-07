@@ -136,9 +136,9 @@ export function getUsageHistory(range: UsageHistoryRange, offset: number = 0): U
 
   if (range === 'day') {
     const shiftedNow = Date.now() + offset * 24 * H;
-    const curHour = localHourStart(shiftedNow);
+    const dayStart = localDayStart(shiftedNow);
     return Array.from({ length: 24 }, (_, i) => {
-      const hStart = curHour - (23 - i) * H;
+      const hStart = dayStart + i * H;
       const h = new Date(hStart).getHours();
       const label = `${String(h).padStart(2, '0')}:00`;
       const curr = latestSnapIn(snaps, hStart, hStart + H);
