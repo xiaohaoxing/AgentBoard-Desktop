@@ -62,6 +62,8 @@ const resources: Record<Locale, Record<string, string>> = {
     'trend.clearConfirmMsg': '将删除所有本地用量历史记录，此操作不可撤销。',
     'trend.clearConfirmOk': '清空',
     'trend.clearConfirmCancel': '取消',
+    'trend.prevPeriod': '上一期',
+    'trend.nextPeriod': '下一期',
   },
   en: {
     // Internal locale identifier
@@ -120,6 +122,8 @@ const resources: Record<Locale, Record<string, string>> = {
     'trend.clearConfirmMsg': 'All local usage history will be deleted. This cannot be undone.',
     'trend.clearConfirmOk': 'Clear',
     'trend.clearConfirmCancel': 'Cancel',
+    'trend.prevPeriod': 'Previous period',
+    'trend.nextPeriod': 'Next period',
   },
 };
 

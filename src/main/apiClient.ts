@@ -131,12 +131,12 @@ function usageDelta(curr: HourlyUsageSnap | null, prev: HourlyUsageSnap | null):
   return Math.max(0, curr.tokens - prev.tokens);
 }
 
-export function getUsageHistory(range: UsageHistoryRange): UsagePoint[] {
+export function getUsageHistory(range: UsageHistoryRange, offset: number = 0): UsagePoint[] {
   const snaps = usageHistoryStore.get('snaps');
-  const now = Date.now();
 
   if (range === 'day') {
-    const curHour = localHourStart(now);
+    const shiftedNow = Date.now() + offset * 24 * H;
+    const curHour = localHourStart(shiftedNow);
     return Array.from({ length: 24 }, (_, i) => {
       const hStart = curHour - (23 - i) * H;
       const h = new Date(hStart).getHours();
@@ -148,7 +148,8 @@ export function getUsageHistory(range: UsageHistoryRange): UsagePoint[] {
   }
 
   const buckets = range === 'month' ? 30 : 7;
-  const today = localDayStart(now);
+  const shiftedNow = Date.now() + offset * buckets * D;
+  const today = localDayStart(shiftedNow);
   return Array.from({ length: buckets }, (_, i) => {
     const dStart = today - (buckets - 1 - i) * D;
     const d = new Date(dStart + 12 * H); // noon → correct local date in any TZ

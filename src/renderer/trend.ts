@@ -1,5 +1,5 @@
 declare const trendApi: {
-  getUsageHistory: (range: string) => Promise<{ label: string; tokens: number }[]>;
+  getUsageHistory: (range: string, offset?: number) => Promise<{ label: string; tokens: number }[]>;
   clearUsageHistory: () => Promise<void>;
   confirmClear: () => Promise<boolean>;
   t: (key: string) => string;
@@ -268,7 +268,37 @@ function trendFmt(n: number): string {
 let currentData: UsagePoint[] = [];
 let currentRange: RangeType = 'week';
 let currentType: ChartType = 'line';
+let currentOffset: number = 0;
 let chart: TrendChart;
+
+function trendPeriodLabel(range: RangeType, offset: number): string {
+  const H_MS = 3_600_000;
+  const D_MS = 86_400_000;
+  const now = Date.now();
+  const fmtMD = (ts: number) => {
+    const d = new Date(ts);
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  if (range === 'day') {
+    const d = new Date(now + offset * 24 * H_MS);
+    return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  const buckets = range === 'month' ? 30 : 7;
+  const endDay = new Date(now + offset * buckets * D_MS);
+  endDay.setHours(0, 0, 0, 0);
+  const endTs = endDay.getTime();
+  const startTs = endTs - (buckets - 1) * D_MS;
+  return `${fmtMD(startTs)} – ${fmtMD(endTs)}`;
+}
+
+function updateNavUI(range: RangeType, offset: number): void {
+  const labelEl = document.getElementById('period-label')!;
+  const btnNext = document.getElementById('btn-next') as HTMLButtonElement;
+  labelEl.textContent = trendPeriodLabel(range, offset);
+  btnNext.disabled = offset >= 0;
+}
 
 function updateSummary(data: UsagePoint[], range: RangeType): void {
   const total = data.reduce((s, p) => s + p.tokens, 0);
@@ -289,10 +319,11 @@ function applyTrendLocale(): void {
   });
 }
 
-async function loadData(range: RangeType): Promise<void> {
-  const data = await trendApi.getUsageHistory(range);
+async function loadData(range: RangeType, offset: number = 0): Promise<void> {
+  const data = await trendApi.getUsageHistory(range, offset);
   currentData = data;
   updateSummary(data, range);
+  updateNavUI(range, offset);
   chart.render(data, currentType);
 }
 
@@ -312,8 +343,20 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('[data-range]').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       currentRange = btn.dataset.range as RangeType;
-      loadData(currentRange);
+      currentOffset = 0;
+      loadData(currentRange, currentOffset);
     });
+  });
+
+  // Navigation buttons
+  document.getElementById('btn-prev')?.addEventListener('click', () => {
+    currentOffset -= 1;
+    loadData(currentRange, currentOffset);
+  });
+  document.getElementById('btn-next')?.addEventListener('click', () => {
+    if (currentOffset >= 0) return;
+    currentOffset += 1;
+    loadData(currentRange, currentOffset);
   });
 
   // Chart type buttons
@@ -355,7 +398,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmed = await trendApi.confirmClear();
     if (!confirmed) return;
     await trendApi.clearUsageHistory();
-    loadData(currentRange);
+    currentOffset = 0;
+    loadData(currentRange, currentOffset);
   });
 
   applyTrendLocale();
@@ -365,5 +409,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Load default (week)
-  loadData('week');
+  loadData('week', 0);
 });

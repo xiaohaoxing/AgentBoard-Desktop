@@ -57,11 +57,12 @@ function seededRand(seed: number): () => number {
   };
 }
 
-export function getDemoUsageHistory(range: UsageHistoryRange): UsagePoint[] {
-  const rand = seededRand(42);
-  const now = new Date('2026-04-30T18:00:00');
+export function getDemoUsageHistory(range: UsageHistoryRange, offset: number = 0): UsagePoint[] {
+  const rand = seededRand(42 + Math.abs(offset));
+  const baseNow = new Date('2026-04-30T18:00:00');
 
   if (range === 'day') {
+    const now = new Date(baseNow.getTime() + offset * 24 * 3_600_000);
     return Array.from({ length: 24 }, (_, i) => {
       const h = (now.getHours() - 23 + i + 24) % 24;
       const label = `${String(h).padStart(2, '0')}:00`;
@@ -73,6 +74,7 @@ export function getDemoUsageHistory(range: UsageHistoryRange): UsagePoint[] {
   }
 
   if (range === 'week') {
+    const now = new Date(baseNow.getTime() + offset * 7 * 86_400_000);
     const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     const weekdayBase = [420_000, 510_000, 480_000, 550_000, 490_000, 180_000, 90_000];
     return Array.from({ length: 7 }, (_, i) => {
@@ -87,6 +89,7 @@ export function getDemoUsageHistory(range: UsageHistoryRange): UsagePoint[] {
   }
 
   // month
+  const now = new Date(baseNow.getTime() + offset * 30 * 86_400_000);
   return Array.from({ length: 30 }, (_, i) => {
     const d = new Date(now);
     d.setDate(d.getDate() - 29 + i);

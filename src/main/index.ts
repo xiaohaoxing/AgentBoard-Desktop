@@ -36,9 +36,9 @@ app.whenReady().then(async () => {
   setupI18nHandlers();
   setupAuthHandlers();
 
-  ipcMain.handle('get-usage-history', (_event, { range }: { range: string }) => {
-    if (isDemo) return getDemoUsageHistory(range as 'day' | 'week' | 'month');
-    return getUsageHistory(range as 'day' | 'week' | 'month');
+  ipcMain.handle('get-usage-history', (_event, { range, offset = 0 }: { range: string; offset?: number }) => {
+    if (isDemo) return getDemoUsageHistory(range as 'day' | 'week' | 'month', offset);
+    return getUsageHistory(range as 'day' | 'week' | 'month', offset);
   });
 
   ipcMain.handle('clear-usage-history', () => {

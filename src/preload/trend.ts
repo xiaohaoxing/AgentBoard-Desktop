@@ -1,8 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('trendApi', {
-  getUsageHistory: (range: string): Promise<{ label: string; tokens: number }[]> =>
-    ipcRenderer.invoke('get-usage-history', { range }),
+  getUsageHistory: (range: string, offset: number = 0): Promise<{ label: string; tokens: number }[]> =>
+    ipcRenderer.invoke('get-usage-history', { range, offset }),
   clearUsageHistory: (): Promise<void> =>
     ipcRenderer.invoke('clear-usage-history'),
   confirmClear: (): Promise<boolean> =>
