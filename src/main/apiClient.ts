@@ -215,23 +215,29 @@ function requestJson(url: string): Promise<unknown | NetworkError> {
     req.setHeader('User-Agent', 'Mozilla/5.0 AgentBoard-Desktop');
 
     let body = '';
+    let settled = false;
+    const settle = (value: unknown | NetworkError) => {
+      if (!settled) { settled = true; resolve(value); }
+    };
+
     req.on('response', (response) => {
       const status = response.statusCode;
       if (status === 401 || status === 400) {
         ipcMain.emit('auth:needs-login');
-        resolve({ type: 'network', message: 'Unauthorized', status });
+        settle({ type: 'network', message: 'Unauthorized', status });
         return;
       }
       response.on('data', (chunk) => { body += chunk.toString(); });
       response.on('end', () => {
         try {
-          resolve(JSON.parse(body));
+          settle(JSON.parse(body));
         } catch {
-          resolve({ type: 'network', message: 'Invalid JSON' });
+          settle({ type: 'network', message: 'Invalid JSON' });
         }
       });
+      response.on('error', (err: Error) => settle({ type: 'network', message: err.message }));
     });
-    req.on('error', (err) => resolve({ type: 'network', message: err.message }));
+    req.on('error', (err) => settle({ type: 'network', message: err.message }));
     req.end();
   });
 }
