@@ -147,12 +147,37 @@ export function getUsageHistory(range: UsageHistoryRange, offset: number = 0): U
     });
   }
 
-  const buckets = range === 'month' ? 30 : 7;
-  const shiftedNow = Date.now() + offset * buckets * D;
-  const today = localDayStart(shiftedNow);
-  return Array.from({ length: buckets }, (_, i) => {
-    const dStart = today - (buckets - 1 - i) * D;
-    const d = new Date(dStart + 12 * H); // noon → correct local date in any TZ
+  if (range === 'week') {
+    // Natural calendar week: Monday–Sunday, offset in weeks
+    const today = localDayStart();
+    const todayDate = new Date(today);
+    const dow = todayDate.getDay(); // 0=Sun, 1=Mon … 6=Sat
+    const toMonday = dow === 0 ? -6 : 1 - dow;
+    const weekStart = today + (toMonday + offset * 7) * D;
+    return Array.from({ length: 7 }, (_, i) => {
+      const dStart = weekStart + i * D;
+      const d = new Date(dStart + 12 * H);
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const label = `${mm}/${dd}`;
+      const curr = latestSnapIn(snaps, dStart, dStart + D);
+      const prev = latestSnapIn(snaps, dStart - D, dStart);
+      return { label, tokens: usageDelta(curr, prev) };
+    });
+  }
+
+  // Natural calendar month, offset in months
+  const now = new Date();
+  let year = now.getFullYear();
+  let month = now.getMonth() + offset;
+  while (month < 0) { month += 12; year -= 1; }
+  while (month >= 12) { month -= 12; year += 1; }
+  const monthStart = new Date(year, month, 1, 0, 0, 0, 0).getTime();
+  const nextMonthStart = new Date(year, month + 1, 1, 0, 0, 0, 0).getTime();
+  const daysInMonth = Math.round((nextMonthStart - monthStart) / D);
+  return Array.from({ length: daysInMonth }, (_, i) => {
+    const dStart = monthStart + i * D;
+    const d = new Date(dStart + 12 * H);
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     const label = `${mm}/${dd}`;

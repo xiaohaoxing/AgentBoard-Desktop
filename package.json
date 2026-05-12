@@ -1,7 +1,7 @@
 {
   "name": "agentboard-desktop",
   "productName": "AgentBoard",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Desktop client for agentboard.cc",
   "author": "AgentBoard",
   "main": "dist/main/index.js",
@@ -17,7 +17,7 @@
   "build": {
     "appId": "cc.agentboard.desktop",
     "productName": "AgentBoard",
-    "copyright": "Copyright © 2024 AgentBoard",
+    "copyright": "Copyright \u00a9 2024 AgentBoard",
     "mac": {
       "category": "public.app-category.productivity",
       "target": [

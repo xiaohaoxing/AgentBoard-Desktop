@@ -74,29 +74,38 @@ export function getDemoUsageHistory(range: UsageHistoryRange, offset: number = 0
   }
 
   if (range === 'week') {
-    const now = new Date(baseNow.getTime() + offset * 7 * 86_400_000);
+    // Natural calendar week (Mon–Sun), offset in weeks
+    const dow = baseNow.getDay();
+    const toMonday = dow === 0 ? -6 : 1 - dow;
+    const weekStart = new Date(baseNow);
+    weekStart.setDate(weekStart.getDate() + toMonday + offset * 7);
+    weekStart.setHours(0, 0, 0, 0);
     const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     const weekdayBase = [420_000, 510_000, 480_000, 550_000, 490_000, 180_000, 90_000];
     return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 6 + i);
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
       const mm = String(d.getMonth() + 1).padStart(2, '0');
       const dd = String(d.getDate()).padStart(2, '0');
-      const label = `${mm}/${dd} ${days[d.getDay() === 0 ? 6 : d.getDay() - 1]}`;
+      const label = `${mm}/${dd} ${days[i]}`;
       const tokens = Math.round(weekdayBase[i] * (0.75 + rand() * 0.5));
       return { label, tokens };
     });
   }
 
-  // month
-  const now = new Date(baseNow.getTime() + offset * 30 * 86_400_000);
-  return Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - 29 + i);
+  // Natural calendar month, offset in months
+  let year = baseNow.getFullYear();
+  let month = baseNow.getMonth() + offset;
+  while (month < 0) { month += 12; year -= 1; }
+  while (month >= 12) { month -= 12; year += 1; }
+  const monthStart = new Date(year, month, 1);
+  const daysInMonth = Math.round((new Date(year, month + 1, 1).getTime() - monthStart.getTime()) / 86_400_000);
+  return Array.from({ length: daysInMonth }, (_, i) => {
+    const d = new Date(year, month, i + 1);
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
-    const label = `${mm}/${dd}`;
     const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    const label = `${mm}/${dd}`;
     const base = isWeekend ? 120_000 : 400_000;
     const tokens = Math.round(base * (0.5 + rand() * 1.0));
     return { label, tokens };

@@ -300,12 +300,22 @@ function trendPeriodLabel(range: RangeType, offset: number): string {
     return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  const buckets = range === 'month' ? 30 : 7;
-  const endDay = new Date(now + offset * buckets * D_MS);
-  endDay.setHours(0, 0, 0, 0);
-  const endTs = endDay.getTime();
-  const startTs = endTs - (buckets - 1) * D_MS;
-  return `${fmtMD(startTs)} – ${fmtMD(endTs)}`;
+  if (range === 'week') {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dow = today.getDay();
+    const toMonday = dow === 0 ? -6 : 1 - dow;
+    const weekStart = today.getTime() + (toMonday + offset * 7) * D_MS;
+    const weekEnd = weekStart + 6 * D_MS;
+    return `${fmtMD(weekStart)} – ${fmtMD(weekEnd)}`;
+  }
+
+  // month
+  let year = new Date().getFullYear();
+  let month = new Date().getMonth() + offset;
+  while (month < 0) { month += 12; year -= 1; }
+  while (month >= 12) { month -= 12; year += 1; }
+  return `${year}/${String(month + 1).padStart(2, '0')}`;
 }
 
 function updateNavUI(range: RangeType, offset: number): void {
