@@ -17,6 +17,7 @@ class TrendChart {
   private ctx: CanvasRenderingContext2D;
   private data: UsagePoint[] = [];
   private chartType: ChartType = 'line';
+  private range: RangeType = 'week';
 
   private readonly ML = 58;  // marginLeft
   private readonly MR = 16;  // marginRight
@@ -38,9 +39,10 @@ class TrendChart {
     this.redraw();
   }
 
-  render(data: UsagePoint[], type: ChartType): void {
+  render(data: UsagePoint[], type: ChartType, range: RangeType = 'week'): void {
     this.data = data;
     this.chartType = type;
+    this.range = range;
     this.redraw();
   }
 
@@ -118,10 +120,19 @@ class TrendChart {
     const col = this.colors();
 
     c.font = '10px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
-    c.textAlign = 'center';
     c.textBaseline = 'top';
     c.fillStyle = col.textTertiary;
 
+    if (this.range === 'day') {
+      [0, 6, 12, 18, 24].forEach((hour) => {
+        const x = ML + (hour / 24) * plotW;
+        c.textAlign = hour === 0 ? 'left' : hour === 24 ? 'right' : 'center';
+        c.fillText(`${String(hour).padStart(2, '0')}:00`, x, MT + plotH + 8);
+      });
+      return;
+    }
+
+    c.textAlign = 'center';
     const maxLabels = Math.floor(plotW / 48);
     const step = Math.max(1, Math.ceil(n / maxLabels));
 
@@ -153,7 +164,9 @@ class TrendChart {
 
     this.drawAxes(w, h, yMax, ticks);
 
-    const px = (i: number) => ML + (i / (n - 1)) * plotW;
+    const px = (i: number) => this.range === 'day'
+      ? ML + (i / n) * plotW
+      : ML + (i / (n - 1)) * plotW;
     const py = (v: number) => MT + plotH - (v / yMax) * plotH;
 
     // Fill gradient under line
@@ -233,7 +246,9 @@ class TrendChart {
     const n = this.data.length;
 
     if (this.chartType === 'line') {
-      const px = (i: number) => ML + (i / (n - 1)) * plotW;
+      const px = (i: number) => this.range === 'day'
+        ? ML + (i / n) * plotW
+        : ML + (i / (n - 1)) * plotW;
       const py = (v: number) => MT + plotH - (v / yMax) * plotH;
       let closest: UsagePoint | null = null;
       let minDist = 16;
@@ -324,7 +339,7 @@ async function loadData(range: RangeType, offset: number = 0): Promise<void> {
   currentData = data;
   updateSummary(data, range);
   updateNavUI(range, offset);
-  chart.render(data, currentType);
+  chart.render(data, currentType, range);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -365,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('[data-chart-type]').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       currentType = btn.dataset.chartType as ChartType;
-      chart.render(currentData, currentType);
+      chart.render(currentData, currentType, currentRange);
     });
   });
 
