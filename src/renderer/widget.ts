@@ -186,8 +186,16 @@ function renderUserCard(data: BootstrapData): void {
       setTrend(rbTeamsTrend, myTeamRankChange ?? null);
     }
   } else if (profile) {
-    rbPeopleNum.textContent = '—';
+    // Not in top-150 for this period
+    rbPeopleNum.textContent = '>150';
     rbTeamsNum.textContent = '—';
+    tbRank.textContent = '>150';
+    tbRank.className = 'tb-rank';
+    ucTokens.textContent = '—';
+    ucTokensLabel.style.visibility = 'visible';
+    ucTokensLabel.textContent = `not in top 150 · ${periodLabel(data.periodId)}`;
+    const deltaEl = document.getElementById('uc-tokens-delta')!;
+    deltaEl.style.visibility = 'hidden';
   }
 }
 

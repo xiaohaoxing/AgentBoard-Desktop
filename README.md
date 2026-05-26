@@ -1,5 +1,7 @@
 # AgentBoard-Desktop
 
+> **已知问题（2026-05-27）**：agentboard.cc 官方平台的排行榜 API 目前每次仅返回 Top 150 名用户，排名在 150 名以外的用户将无法在本应用中看到自己的排名数据。这是上游平台的限制，暂时无法在客户端侧解决，待官方修复后会自动恢复正常。
+
 macOS 菜单栏应用，实时显示 [agentboard.cc](https://agentboard.cc) 的个人与团队排行榜。
 
 [![Release](https://github.com/xiaohaoxing/AgentBoard-Desktop/actions/workflows/release.yml/badge.svg)](https://github.com/xiaohaoxing/AgentBoard-Desktop/actions/workflows/release.yml)

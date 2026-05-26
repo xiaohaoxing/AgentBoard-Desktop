@@ -1,5 +1,7 @@
 # AgentBoard-Desktop
 
+> **Known Issue (2026-05-27)**: The agentboard.cc leaderboard API currently only returns the Top 150 users. If your ranking is outside the top 150, your personal stats will not be displayed in this app. This is an upstream platform limitation and cannot be worked around on the client side. It will recover automatically once the official platform is fixed.
+
 A macOS menu bar app that displays your personal and team rankings on [agentboard.cc](https://agentboard.cc) in real time.
 
 [![Release](https://github.com/xiaohaoxing/AgentBoard-Desktop/actions/workflows/release.yml/badge.svg)](https://github.com/xiaohaoxing/AgentBoard-Desktop/actions/workflows/release.yml)
