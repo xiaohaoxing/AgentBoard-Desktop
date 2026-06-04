@@ -23,8 +23,21 @@ interface TeamEntry {
   rank: number; handle: string; name: string; avatar_url: string | null;
   member_count: number; active_members: number; total_tokens: number; boost_ratio: number;
 }
+interface ViewerOrg {
+  id: string; name: string; slug: string; handle: string; avatar_url: string | null;
+}
 interface ViewerProfile {
   id: string; handle: string; display_name: string; avatar_url: string | null;
+  initials?: string; organizations?: Record<string, ViewerOrg | null>;
+}
+interface DashboardSourceCard {
+  source: string; tokens_used: number; provider_total_tokens: number;
+  ai_time_mins: number; coding_time_mins: number; sessions: number;
+}
+interface DashboardStats {
+  sourceCards: DashboardSourceCard[];
+  periodSourceCards: Record<string, DashboardSourceCard[]>;
+  totalTokens: number;
 }
 interface BootstrapData {
   periodId: string;
@@ -35,6 +48,10 @@ interface BootstrapData {
   myPeopleRankChange?: number | null;
   myTeamRankChange?: number | null;
   myTokensDelta?: number | null;
+  lastKnownRank?: number | null;
+  lastKnownTokens?: number | null;
+  lastKnownTeamRank?: number | null;
+  dashboardStats?: DashboardStats | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -44,6 +61,17 @@ function fmtTokens(n: number): string {
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
   return String(n);
+}
+
+function fmtMins(mins: number): string {
+  if (mins < 1) return '0m';
+  if (mins < 60) return `${Math.round(mins)}m`;
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  if (h < 24) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  const d = Math.floor(h / 24);
+  const rh = h % 24;
+  return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
 }
 
 function relativeTime(d: Date): string {
@@ -81,19 +109,6 @@ function rankTier(rank: number): string {
   return 'tier-green';
 }
 
-function setTrend(el: HTMLElement, change: number | null): void {
-  if (change == null || change === 0) {
-    el.className = 'rb-trend flat';
-    el.textContent = '·';
-  } else if (change > 0) {
-    el.className = 'rb-trend up';
-    el.textContent = `↑${change}`;
-  } else {
-    el.className = 'rb-trend down';
-    el.textContent = `↓${Math.abs(change)}`;
-  }
-}
-
 // ── State ─────────────────────────────────────────────────────────────────────
 
 let currentTab: 'people' | 'teams' = 'people';
@@ -110,24 +125,21 @@ const btnPin = document.getElementById('btn-pin') as HTMLButtonElement;
 const btnRefresh = document.getElementById('btn-refresh') as HTMLButtonElement;
 const btnCollapse = document.getElementById('btn-collapse') as HTMLButtonElement;
 const updatedAt = document.getElementById('updated-at')!;
-const tbRank = document.getElementById('tb-rank')!;
 const ucName = document.getElementById('uc-name')!;
 const ucTeam = document.getElementById('uc-team')!;
 const ucTokens = document.getElementById('uc-tokens')!;
 const ucTokensLabel = document.getElementById('uc-tokens-label')!;
-const badgePeople = document.getElementById('badge-people')!;
-const rbPeopleNum = document.getElementById('rb-people-num')!;
-const rbPeopleTrend = document.getElementById('rb-people-trend')!;
-const badgeTeams = document.getElementById('badge-teams')!;
-const rbTeamsNum = document.getElementById('rb-teams-num')!;
-const rbTeamsTrend = document.getElementById('rb-teams-trend')!;
+const statTokensVal = document.getElementById('stat-tokens-val')!;
+const statTokensSub = document.getElementById('stat-tokens-sub')!;
+const statCodingVal = document.getElementById('stat-coding-val')!;
+const statAiVal = document.getElementById('stat-ai-val')!;
 const list = document.getElementById('list')!;
 const tabs = document.querySelectorAll<HTMLButtonElement>('.tab');
 
 // ── Render user card ─────────────────────────────────────────────────────────
 
 function renderUserCard(data: BootstrapData): void {
-  const { viewer, people, teams, currentUserId, myPeopleRankChange, myTeamRankChange, myTokensDelta } = data;
+  const { viewer, people, currentUserId, dashboardStats } = data;
   const uid = viewer?.id ?? currentUserId;
   const me = (uid ? people.find((p) => p.user_id === uid) : undefined)
     ?? (viewer?.handle ? people.find((p) => p.handle === viewer.handle) : undefined);
@@ -143,60 +155,45 @@ function renderUserCard(data: BootstrapData): void {
   const profile = viewer ?? (me ? { id: me.user_id, handle: me.handle, display_name: me.display_name, avatar_url: avatarUrl } : null);
 
   if (profile) {
-    // Re-query each render to avoid operating on a detached element
     const avatarWrap = document.getElementById('uc-avatar-wrap')!;
     avatarWrap.outerHTML = avatarUrl
       ? `<img id="uc-avatar-wrap" class="uc-avatar" src="${avatarUrl}" alt="" onerror="this.style.display='none'">`
       : `<div id="uc-avatar-wrap" class="uc-avatar-placeholder">${initials(profile.display_name || profile.handle)}</div>`;
     ucName.textContent = profile.display_name || profile.handle;
-    ucTeam.textContent = me?.team_name || '';
-
-    // Always reveal badge placeholders once we have a profile
-    badgePeople.style.visibility = 'visible';
-    badgeTeams.style.visibility = 'visible';
+    const teamName = me?.team_name || viewer?.organizations?.team?.name || '';
+    ucTeam.textContent = teamName;
   }
 
-  if (me) {
-    ucTokens.textContent = fmtTokens(me.total_tokens);
+  // Determine period tokens from dashboard stats or live leaderboard
+  const periodCards = dashboardStats?.periodSourceCards?.[data.periodId];
+  const periodTokens = periodCards
+    ? periodCards.reduce((s: number, c: DashboardSourceCard) => s + (c.provider_total_tokens ?? 0), 0)
+    : me?.total_tokens ?? null;
+  const periodCodingMins = periodCards
+    ? periodCards.reduce((s: number, c: DashboardSourceCard) => s + (c.coding_time_mins ?? 0), 0)
+    : me?.ai_time_mins ?? null;
+  const periodAiMins = periodCards
+    ? periodCards.reduce((s: number, c: DashboardSourceCard) => s + (c.ai_time_mins ?? 0), 0)
+    : me?.ai_time_mins ?? null;
+
+  if (periodTokens != null) {
+    ucTokens.textContent = fmtTokens(periodTokens);
     ucTokensLabel.style.visibility = 'visible';
     ucTokensLabel.textContent = `tokens · ${periodLabel(data.periodId)}`;
-
-    const deltaEl = document.getElementById('uc-tokens-delta')!;
-    if (myTokensDelta != null && myTokensDelta !== 0) {
-      deltaEl.textContent = (myTokensDelta > 0 ? '+' : '') + fmtTokens(myTokensDelta);
-      deltaEl.className = `uc-tokens-delta ${myTokensDelta > 0 ? 'positive' : 'negative'}`;
-      deltaEl.style.visibility = 'visible';
-    } else {
-      deltaEl.style.visibility = 'hidden';
-    }
-
-    const peopleTier = rankTier(me.rank);
-    badgePeople.className = `rank-badge ${peopleTier}`;
-    rbPeopleNum.textContent = `#${me.rank}`;
-    setTrend(rbPeopleTrend, myPeopleRankChange ?? null);
-
-    tbRank.textContent = `#${me.rank}`;
-    tbRank.className = `tb-rank ${peopleTier}`;
-
-    const myTeam = me.team_handle ? teams.find((t) => t.handle === me.team_handle) : null;
-    if (myTeam) {
-      const teamTier = rankTier(myTeam.rank);
-      badgeTeams.className = `rank-badge ${teamTier}`;
-      rbTeamsNum.textContent = `#${myTeam.rank}`;
-      setTrend(rbTeamsTrend, myTeamRankChange ?? null);
-    }
-  } else if (profile) {
-    // Not in top-150 for this period
-    rbPeopleNum.textContent = '>150';
-    rbTeamsNum.textContent = '—';
-    tbRank.textContent = '>150';
-    tbRank.className = 'tb-rank';
+    statTokensVal.textContent = fmtTokens(periodTokens);
+    statTokensSub.textContent = periodLabel(data.periodId);
+  } else {
     ucTokens.textContent = '—';
-    ucTokensLabel.style.visibility = 'visible';
-    ucTokensLabel.textContent = `not in top 150 · ${periodLabel(data.periodId)}`;
-    const deltaEl = document.getElementById('uc-tokens-delta')!;
-    deltaEl.style.visibility = 'hidden';
+    ucTokensLabel.style.visibility = 'hidden';
+    statTokensVal.textContent = '—';
+    statTokensSub.textContent = '';
   }
+
+  const deltaEl = document.getElementById('uc-tokens-delta')!;
+  deltaEl.style.visibility = 'hidden';
+
+  statCodingVal.textContent = periodCodingMins != null ? fmtMins(periodCodingMins) : '—';
+  statAiVal.textContent = periodAiMins != null ? fmtMins(periodAiMins) : '—';
 }
 
 // ── Render list ───────────────────────────────────────────────────────────────

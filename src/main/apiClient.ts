@@ -1,5 +1,13 @@
 import { net, ipcMain, session } from 'electron';
 import Store from 'electron-store';
+import fs from 'fs';
+import os from 'os';
+
+function debugLog(msg: string): void {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  fs.appendFileSync(`${os.homedir()}/agentboard-debug.log`, line);
+  console.log(msg);
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,12 +41,25 @@ export interface TeamEntry {
   boost_ratio: number;
 }
 
+export interface ViewerOrg {
+  id: string;
+  name: string;
+  slug: string;
+  handle: string;
+  avatar_url: string | null;
+  invite_code?: string;
+}
+
 export interface ViewerProfile {
   id: string;
   handle: string;
   display_name: string;
   avatar_url: string | null;
-  role: string;
+  role?: string;
+  initials?: string;
+  timezone?: string;
+  followingIds?: string[];
+  organizations?: Record<string, ViewerOrg | null>;
 }
 
 export interface BootstrapData {
@@ -50,6 +71,10 @@ export interface BootstrapData {
   myPeopleRankChange?: number | null;
   myTeamRankChange?: number | null;
   myTokensDelta?: number | null;
+  lastKnownRank?: number | null;
+  lastKnownTokens?: number | null;
+  lastKnownTeamRank?: number | null;
+  dashboardStats?: DashboardStats | null;
 }
 
 export interface NetworkError {
@@ -216,9 +241,24 @@ function parseCurrentUserIdFromCookies(cookies: Electron.Cookie[]): string | nul
   const part0 = cookies.find((c) => c.name === `${SUPABASE_COOKIE_PREFIX}.0`);
   if (!part0) return null;
   try {
-    const raw = part0.value.startsWith('base64-')
-      ? Buffer.from(part0.value.slice(7), 'base64').toString('utf8')
-      : part0.value;
+    // The session JSON may be split across .0, .1, .2 … chunks of base64.
+    // Collect all parts in order and concatenate before decoding.
+    const parts = cookies
+      .filter((c) => c.name.startsWith(`${SUPABASE_COOKIE_PREFIX}.`))
+      .sort((a, b) => {
+        const ai = parseInt(a.name.split('.').pop()!, 10);
+        const bi = parseInt(b.name.split('.').pop()!, 10);
+        return ai - bi;
+      });
+
+    const isBase64 = part0.value.startsWith('base64-');
+    let raw: string;
+    if (isBase64) {
+      const combined = parts.map((p) => p.value.startsWith('base64-') ? p.value.slice(7) : p.value).join('');
+      raw = Buffer.from(combined, 'base64').toString('utf8');
+    } else {
+      raw = parts.map((p) => p.value).join('');
+    }
     const parsed = JSON.parse(raw);
     return parsed?.user?.id ?? null;
   } catch {
@@ -267,27 +307,131 @@ function requestJson(url: string): Promise<unknown | NetworkError> {
   });
 }
 
+function requestText(url: string, extraHeaders: Record<string, string> = {}): Promise<string | NetworkError> {
+  return new Promise((resolve) => {
+    const req = net.request({ method: 'GET', url, useSessionCookies: true });
+    req.setHeader('Accept', 'text/html,*/*');
+    req.setHeader('User-Agent', 'Mozilla/5.0 AgentBoard-Desktop');
+    for (const [k, v] of Object.entries(extraHeaders)) req.setHeader(k, v);
+
+    let body = '';
+    let settled = false;
+    const settle = (value: string | NetworkError) => {
+      if (!settled) { settled = true; resolve(value); }
+    };
+
+    req.on('response', (response) => {
+      const status = response.statusCode;
+      if (status === 401 || status === 400) {
+        settle({ type: 'network', message: 'Unauthorized', status });
+        return;
+      }
+      response.on('data', (chunk) => { body += chunk.toString(); });
+      response.on('end', () => settle(body));
+      response.on('error', (err: Error) => settle({ type: 'network', message: err.message }));
+    });
+    req.on('error', (err) => settle({ type: 'network', message: err.message }));
+    req.end();
+  });
+}
+
+export interface DashboardSourceCard {
+  source: string;
+  tokens_used: number;
+  provider_total_tokens: number;
+  ai_time_mins: number;
+  coding_time_mins: number;
+  sessions: number;
+  lines_added: number;
+  lines_removed: number;
+}
+
+export interface DashboardStats {
+  sourceCards: DashboardSourceCard[];
+  periodSourceCards: Record<string, DashboardSourceCard[]>;
+  totalTokens: number;
+}
+
+export async function fetchDashboardStats(): Promise<DashboardStats | null> {
+  const raw = await requestText('https://agentboard.cc/dashboard', { 'RSC': '1' });
+  if (typeof raw !== 'string') {
+    debugLog(`[dashboard] fetch error: ${(raw as NetworkError).message}`);
+    return null;
+  }
+  debugLog(`[dashboard] RSC payload length: ${raw.length}`);
+
+  // RSC stream: newline-separated lines of the form "N:JSON"
+  for (const line of raw.split('\n')) {
+    if (!line.includes('sourceCards')) continue;
+    const colon = line.indexOf(':');
+    if (colon < 0) continue;
+    const stats = parseSourceCards(line.slice(colon + 1));
+    if (stats) {
+      debugLog(`[dashboard] found sourceCards: ${stats.sourceCards.length} cards, total=${stats.totalTokens}`);
+      return stats;
+    }
+  }
+
+  debugLog('[dashboard] sourceCards not found in RSC payload');
+  return null;
+}
+
+function extractJsonValue(text: string, key: string, openChar: string, closeChar: string): string | null {
+  const needle = `"${key}":${openChar}`;
+  const start = text.indexOf(needle);
+  if (start < 0) return null;
+  let depth = 0;
+  let valueStart = start + needle.length - 1;
+  for (let i = valueStart; i < text.length; i++) {
+    if (text[i] === openChar) depth++;
+    else if (text[i] === closeChar) {
+      depth--;
+      if (depth === 0) return text.slice(valueStart, i + 1);
+    }
+  }
+  return null;
+}
+
+function parseSourceCards(text: string): DashboardStats | null {
+  if (!text.includes('"sourceCards"')) return null;
+  try {
+    const cardsJson = extractJsonValue(text, 'sourceCards', '[', ']');
+    if (!cardsJson) return null;
+    const sourceCards = JSON.parse(cardsJson) as DashboardSourceCard[];
+    const periodJson = extractJsonValue(text, 'periodSourceCards', '{', '}');
+    const periodSourceCards = periodJson ? JSON.parse(periodJson) as Record<string, DashboardSourceCard[]> : {};
+    const total = sourceCards.reduce((s, c) => s + (c.provider_total_tokens ?? 0), 0);
+    return { sourceCards, periodSourceCards, totalTokens: total };
+  } catch { return null; }
+}
+
 // ── Viewer fetch ──────────────────────────────────────────────────────────────
 
 export async function fetchViewer(): Promise<ViewerProfile | null> {
   if (demoBootstrap) return demoBootstrap.viewer;
+
+  // Only attempt if we actually have auth cookies
+  const cookies = await getAuthCookies();
+  const hasAuth = cookies.some((c) => c.name.startsWith(SUPABASE_COOKIE_PREFIX));
+  if (!hasAuth) return null;
+
   const raw = await requestJson('https://agentboard.cc/api/leaderboard/viewer');
-  console.log('[viewer] raw response:', JSON.stringify(raw));
+  debugLog(`[viewer] raw response: ${JSON.stringify(raw)}`);
   if ((raw as NetworkError).type === 'network') {
-    console.log('[viewer] network error, falling back to cache');
+    debugLog('[viewer] network error, falling back to cache');
     return getCachedViewer();
   }
 
   const data = raw as { currentUser: ViewerProfile | null };
   if (data.currentUser) {
-    console.log('[viewer] currentUser:', JSON.stringify(data.currentUser));
+    debugLog(`[viewer] currentUser: ${JSON.stringify(data.currentUser)}`);
     saveViewer(data.currentUser);
     return data.currentUser;
   }
-  console.log('[viewer] no currentUser in response, clearing stale session and triggering login');
-  const staleCookies = await getAuthCookies();
+  // Cookies exist but server says no user — session is stale
+  debugLog('[viewer] no currentUser in response, clearing stale session and triggering login');
   await Promise.all(
-    staleCookies
+    cookies
       .filter((c) => c.name.startsWith(SUPABASE_COOKIE_PREFIX))
       .map((c) => session.defaultSession.cookies.remove(`https://${COOKIE_DOMAIN}`, c.name))
   );
@@ -314,32 +458,57 @@ export async function fetchBootstrap(): Promise<BootstrapData | NetworkError> {
 
   if ((bootstrapRaw as NetworkError).type === 'network') return bootstrapRaw as NetworkError;
 
-  const data = bootstrapRaw as {
-    snapshot: { periodId: string; people: PersonEntry[]; teams: TeamEntry[] };
+  // API v2: bootstrap returns timeNavigator; snapshot data is a separate call
+  const bootstrap = bootstrapRaw as {
+    // v2 shape
+    timeNavigator?: { defaultPeriodId?: string };
+    // v1 shape (legacy fallback)
+    snapshot?: { periodId: string; people: PersonEntry[]; teams: TeamEntry[] };
   };
+
+  let periodId: string;
+  let people: PersonEntry[];
+  let teams: TeamEntry[];
+
+  if (bootstrap.snapshot) {
+    // v1: snapshot embedded in bootstrap
+    periodId = bootstrap.snapshot.periodId;
+    people = bootstrap.snapshot.people;
+    teams = bootstrap.snapshot.teams;
+  } else {
+    // v2: fetch snapshot separately
+    const defaultPeriodId = bootstrap.timeNavigator?.defaultPeriodId
+      ?? `day:${new Date().toISOString().slice(0, 10)}`;
+    const snapshotRaw = await requestJson(
+      `https://agentboard.cc/api/leaderboard/snapshot?periodId=${encodeURIComponent(defaultPeriodId)}`
+    );
+    if ((snapshotRaw as NetworkError).type === 'network') return snapshotRaw as NetworkError;
+    const snap = snapshotRaw as { periodId: string; people: PersonEntry[]; teams: TeamEntry[] };
+    periodId = snap.periodId ?? defaultPeriodId;
+    people = snap.people ?? [];
+    teams = snap.teams ?? [];
+  }
 
   const cookieUserId = parseCurrentUserIdFromCookies(cookies);
   const currentUserId = cookieUserId ?? viewer?.id ?? null;
 
-  console.log('[bootstrap] viewer:', viewer ? `id=${viewer.id} handle=${viewer.handle}` : 'null');
-  console.log('[bootstrap] cookieUserId:', cookieUserId);
-  console.log('[bootstrap] currentUserId (resolved):', currentUserId);
-  console.log('[bootstrap] people count:', data.snapshot.people.length);
-  if (data.snapshot.people.length > 0) {
-    console.log('[bootstrap] first person sample:', JSON.stringify(data.snapshot.people[0]));
-  }
-  const matchById = currentUserId ? data.snapshot.people.find((p) => p.user_id === currentUserId) : null;
-  const matchByHandle = viewer?.handle ? data.snapshot.people.find((p) => p.handle === viewer.handle) : null;
-  console.log('[bootstrap] match by id:', matchById ? `rank=${matchById.rank}` : 'NOT FOUND');
-  console.log('[bootstrap] match by handle:', matchByHandle ? `rank=${matchByHandle.rank}` : 'NOT FOUND');
+  debugLog(`[bootstrap] viewer: ${viewer ? `id=${viewer.id} handle=${viewer.handle}` : 'null'}`);
+  debugLog(`[bootstrap] cookieUserId: ${cookieUserId}`);
+  debugLog(`[bootstrap] currentUserId (resolved): ${currentUserId}`);
+  debugLog(`[bootstrap] periodId: ${periodId}`);
+  debugLog(`[bootstrap] people count: ${people.length}`);
+  debugLog(`[bootstrap] teams count: ${teams.length}`);
+  debugLog(`[bootstrap] team handles: ${teams.map((t) => t.handle).join(', ')}`);
+  const viewerTeamHandle = viewer?.organizations?.team?.handle ?? null;
+  debugLog(`[bootstrap] viewer.organizations.team.handle: ${viewerTeamHandle}`);
+  const teamInList = viewerTeamHandle ? teams.find((t) => t.handle === viewerTeamHandle) : null;
+  debugLog(`[bootstrap] viewer team in teams list: ${teamInList ? `rank=${teamInList.rank}` : 'NOT FOUND'}`);
+  const matchById = currentUserId ? people.find((p) => p.user_id === currentUserId) : null;
+  const matchByHandle = viewer?.handle ? people.find((p) => p.handle === viewer.handle) : null;
+  debugLog(`[bootstrap] match by id: ${matchById ? `rank=${matchById.rank}` : 'NOT FOUND'}`);
+  debugLog(`[bootstrap] match by handle: ${matchByHandle ? `rank=${matchByHandle.rank}` : 'NOT FOUND'}`);
 
-  return {
-    periodId: data.snapshot.periodId,
-    people: data.snapshot.people,
-    teams: data.snapshot.teams,
-    currentUserId,
-    viewer,
-  };
+  return { periodId, people, teams, currentUserId, viewer };
 }
 
 // ── Polling ───────────────────────────────────────────────────────────────────
@@ -378,9 +547,15 @@ async function fetchAndBroadcast(): Promise<void> {
   let myPeopleRankChange: number | null = null;
   let myTeamRankChange: number | null = null;
   let myTokensDelta: number | null = null;
+  let lastKnownRank: number | null = null;
+  let lastKnownTokens: number | null = null;
+  let lastKnownTeamRank: number | null = null;
   if (uid) {
     const me = data.people.find((p) => p.user_id === uid)
       ?? (data.viewer?.handle ? data.people.find((p) => p.handle === data.viewer!.handle) : undefined);
+    debugLog(`[broadcast] uid=${uid}, me=${me ? `rank=${me.rank} tokens=${me.total_tokens}` : 'NOT IN PEOPLE'}`);
+    debugLog(`[broadcast] viewer.organizations=${JSON.stringify(data.viewer?.organizations)}`);
+    debugLog(`[broadcast] teams in list: ${data.teams.map((t) => t.handle).join(', ')}`);
     if (me) {
       const myTeam = me.team_handle ? data.teams.find((t) => t.handle === me.team_handle) : null;
       const history = rankHistoryStore.get('ranks');
@@ -412,8 +587,30 @@ async function fetchAndBroadcast(): Promise<void> {
       rankHistoryStore.set('ranks', { ...history, [uid]: userHistory });
 
       saveUsageSnapshot(me.total_tokens, data.periodId);
+    } else {
+      // User not in current leaderboard — surface last known snapshot from history
+      const history = rankHistoryStore.get('ranks');
+      const userHistory: RankSnapshot[] = history[uid] ?? [];
+      if (userHistory.length > 0) {
+        const last = userHistory[userHistory.length - 1];
+        lastKnownRank = last.peopleRank ?? null;
+        lastKnownTokens = last.totalTokens ?? null;
+        lastKnownTeamRank = last.teamRank ?? null;
+        debugLog(`[broadcast] last known: rank=${lastKnownRank} tokens=${lastKnownTokens} teamRank=${lastKnownTeamRank}`);
+      }
     }
   }
 
-  ipcMain.emit('stats:updated', null, { ...data, myPeopleRankChange, myTeamRankChange, myTokensDelta });
+  // Fetch dashboard stats when user is not in leaderboard to get real token data
+  let dashboardStats: DashboardStats | null = null;
+  const meInLeaderboard = uid ? (data.people.find((p) => p.user_id === uid)
+    ?? (data.viewer?.handle ? data.people.find((p) => p.handle === data.viewer!.handle) : undefined)) : undefined;
+  if (!meInLeaderboard) {
+    dashboardStats = await fetchDashboardStats();
+    if (dashboardStats) {
+      debugLog(`[broadcast] dashboard totalTokens=${dashboardStats.totalTokens}, cards=${dashboardStats.sourceCards.length}`);
+    }
+  }
+
+  ipcMain.emit('stats:updated', null, { ...data, myPeopleRankChange, myTeamRankChange, myTokensDelta, lastKnownRank, lastKnownTokens, lastKnownTeamRank, dashboardStats });
 }

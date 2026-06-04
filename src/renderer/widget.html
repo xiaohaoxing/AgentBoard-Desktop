@@ -192,57 +192,45 @@
     .uc-tokens-delta.positive { color: #30D158; }
     .uc-tokens-delta.negative { color: #FF3B30; }
 
-    /* ── Rank badges ──────────────────────────────────────────── */
-    .uc-badges {
+    /* ── Stats row ────────────────────────────────────────────── */
+    .uc-stats {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       margin-top: 10px;
     }
-    .rank-badge {
+    .uc-stat {
       flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 8px 10px;
+      padding: 7px 6px;
       border-radius: 10px;
       background: var(--bg-row-hover);
       border: 1px solid transparent;
     }
-    .rb-label {
-      font-size: 10px;
+    .uc-stat-label {
+      font-size: 9px;
       font-weight: 500;
       color: var(--text-tertiary);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       line-height: 1;
+      white-space: nowrap;
     }
-    .rb-num {
-      font-size: 20px;
+    .uc-stat-val {
+      font-size: 17px;
       font-weight: 800;
-      line-height: 1.2;
+      line-height: 1.25;
       color: var(--text-secondary);
     }
-    /* Tier colors */
-    .rank-badge.tier-gold   { background: rgba(255,214,10,0.14); border-color: rgba(255,214,10,0.3); }
-    .rank-badge.tier-gold   .rb-num { color: #D4A017; }
-    .rank-badge.tier-gold   .rb-label { color: #D4A017; opacity: 0.7; }
-    .rank-badge.tier-silver { background: rgba(174,174,178,0.14); border-color: rgba(174,174,178,0.3); }
-    .rank-badge.tier-silver .rb-num { color: #8E8E93; }
-    .rank-badge.tier-bronze { background: rgba(205,127,50,0.14); border-color: rgba(205,127,50,0.3); }
-    .rank-badge.tier-bronze .rb-num { color: #C47B2B; }
-    .rank-badge.tier-blue   { background: rgba(0,122,255,0.10); border-color: rgba(0,122,255,0.2); }
-    .rank-badge.tier-blue   .rb-num { color: #007AFF; }
-    .rank-badge.tier-green  { background: rgba(48,209,88,0.10); border-color: rgba(48,209,88,0.2); }
-    .rank-badge.tier-green  .rb-num { color: #28A745; }
-    @media (prefers-color-scheme: dark) {
-      .rank-badge.tier-gold   .rb-num { color: #FFD60A; }
-      .rank-badge.tier-bronze .rb-num { color: #E8913A; }
-      .rank-badge.tier-green  .rb-num { color: #30D158; }
+    .uc-stat-val.time {
+      font-size: 13px;
     }
-    .rb-trend { font-size: 10px; font-weight: 700; line-height: 1.4; min-height: 14px; }
-    .rb-trend.up   { color: #30D158; }
-    .rb-trend.down { color: #FF3B30; }
-    .rb-trend.flat { visibility: hidden; }
+    .uc-stat-sub {
+      font-size: 9px;
+      color: var(--text-tertiary);
+      line-height: 1.2;
+    }
 
     /* ── Titlebar rank pill ───────────────────────────────────────── */
     .tb-rank {
@@ -467,7 +455,6 @@
 <div id="root">
   <div id="titlebar">
     <span class="tb-title">AgentBoard</span>
-    <span id="tb-rank" class="tb-rank"></span>
     <span class="tb-meta" id="updated-at"></span>
     <div class="tb-actions">
       <button class="tb-btn" id="btn-refresh" title="刷新">
@@ -508,16 +495,21 @@
         </div>
       </div>
     </div>
-    <div class="uc-badges">
-      <div class="rank-badge" id="badge-people" style="visibility:hidden">
-        <span class="rb-label" data-i18n="badge.people">用户</span>
-        <span class="rb-num" id="rb-people-num">—</span>
-        <span class="rb-trend flat" id="rb-people-trend">·</span>
+    <div class="uc-stats">
+      <div class="uc-stat" id="stat-tokens">
+        <span class="uc-stat-label" data-i18n="stat.todayTokens">今日</span>
+        <span class="uc-stat-val" id="stat-tokens-val">—</span>
+        <span class="uc-stat-sub" id="stat-tokens-sub"></span>
       </div>
-      <div class="rank-badge" id="badge-teams" style="visibility:hidden">
-        <span class="rb-label" data-i18n="badge.teams">团队</span>
-        <span class="rb-num" id="rb-teams-num">—</span>
-        <span class="rb-trend flat" id="rb-teams-trend">·</span>
+      <div class="uc-stat" id="stat-coding">
+        <span class="uc-stat-label" data-i18n="stat.codingTime">编码</span>
+        <span class="uc-stat-val time" id="stat-coding-val">—</span>
+        <span class="uc-stat-sub"></span>
+      </div>
+      <div class="uc-stat" id="stat-ai">
+        <span class="uc-stat-label" data-i18n="stat.aiTime">AI</span>
+        <span class="uc-stat-val time" id="stat-ai-val">—</span>
+        <span class="uc-stat-sub"></span>
       </div>
     </div>
   </div>

@@ -24,6 +24,11 @@ const resources: Record<Locale, Record<string, string>> = {
     // Widget user card
     'badge.people': '用户',
     'badge.teams': '团队',
+    // Stats row
+    'stat.todayTokens': '今日',
+    'stat.codingTime': '编码',
+    'stat.aiTime': 'AI',
+    'stat.mins': '分钟',
     // Widget actions
     'btn.refresh': '刷新',
     'btn.pinned': '始终置顶',
@@ -84,6 +89,11 @@ const resources: Record<Locale, Record<string, string>> = {
     // Widget user card
     'badge.people': 'User',
     'badge.teams': 'Team',
+    // Stats row
+    'stat.todayTokens': 'Today',
+    'stat.codingTime': 'Coding',
+    'stat.aiTime': 'AI',
+    'stat.mins': 'mins',
     // Widget actions
     'btn.refresh': 'Refresh',
     'btn.pinned': 'Keep on Top',
